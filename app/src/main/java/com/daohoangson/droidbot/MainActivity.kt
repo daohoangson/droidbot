@@ -1,5 +1,6 @@
 package com.daohoangson.droidbot
 
+import android.content.Intent
 import android.media.projection.MediaProjectionManager
 import android.os.Bundle
 import android.util.Log
@@ -35,6 +36,13 @@ class MainActivity : ComponentActivity() {
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
         Log.d("takeOverLauncher: result -> ", result.toString())
+        if (result.resultCode != RESULT_OK) return@registerForActivityResult
+
+        val serviceIntent = Intent(this, TakeOverService::class.java).apply {
+            putExtra(TakeOverService.EXTRA_INT_MEDIA_PROJECTION_RESULT_CODE, result.resultCode)
+            putExtra(TakeOverService.EXTRA_PARCELABLE_MEDIA_PROJECTION_RESULT_DATA, result.data)
+        }
+        startForegroundService(serviceIntent)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
