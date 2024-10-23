@@ -6,9 +6,16 @@ import android.app.PendingIntent
 import android.app.Service
 import android.content.Intent
 import android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PROJECTION
+import android.graphics.Bitmap
+import android.graphics.PixelFormat
+import android.hardware.display.DisplayManager
+import android.hardware.display.VirtualDisplay
+import android.media.ImageReader
 import android.media.projection.MediaProjection
 import android.media.projection.MediaProjectionManager
+import android.os.Handler
 import android.os.IBinder
+import android.os.Looper
 import androidx.core.app.NotificationCompat
 
 class TakeOverService : Service() {
@@ -24,10 +31,16 @@ class TakeOverService : Service() {
     }
 
     private var mediaProjection: MediaProjection? = null
+    private var virtualDisplay: VirtualDisplay? = null
+    private var imageReader: ImageReader? = null
+
+    private var handler: Handler? = null
+    private var screenCaptureRunnable: Runnable? = null
 
     override fun onCreate() {
         super.onCreate()
         createNotificationChannel()
+        handler = Handler(Looper.getMainLooper())
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -49,6 +62,42 @@ class TakeOverService : Service() {
 
             val mpm = getSystemService(MediaProjectionManager::class.java)
             mediaProjection = mpm.getMediaProjection(resultCode, resultData)
+                .apply {
+                    // callback must be registered first
+                    registerCallback(object : MediaProjection.Callback() {
+                        override fun onStop() {
+                            virtualDisplay?.release()
+                            virtualDisplay = null
+
+                            imageReader?.close()
+                            imageReader = null
+                        }
+                    }, null)
+                }.apply {
+                    val metrics = resources.displayMetrics
+                    imageReader = ImageReader.newInstance(
+                        metrics.widthPixels, metrics.heightPixels, PixelFormat.RGBA_8888, 2
+                    )
+
+                    virtualDisplay = createVirtualDisplay(
+                        "TakeOverService",
+                        metrics.widthPixels,
+                        metrics.heightPixels,
+                        metrics.densityDpi,
+                        DisplayManager.VIRTUAL_DISPLAY_FLAG_AUTO_MIRROR,
+                        imageReader?.surface,
+                        null,
+                        null
+                    )
+                }
+
+            screenCaptureRunnable = object : Runnable {
+                override fun run() {
+                    captureScreen()
+                    handler?.postDelayed(this, 1000)
+                }
+            }
+            handler?.post(screenCaptureRunnable!!)
         } else if (intent.action == ACTION_STOP_CAPTURE) {
             stopSelf()
         }
@@ -62,8 +111,33 @@ class TakeOverService : Service() {
 
     override fun onDestroy() {
         super.onDestroy()
+
+        val runnable = screenCaptureRunnable
+        if (runnable != null) {
+            handler?.removeCallbacks(runnable)
+        }
+
         mediaProjection?.stop()
         mediaProjection = null
+    }
+
+    private fun captureScreen() {
+        imageReader?.acquireLatestImage()?.apply {
+            try {
+                val plane0 = planes[0]
+                val buffer = plane0.buffer
+                val pixelStride = plane0.pixelStride
+                val rowStride = plane0.rowStride
+                val rowPadding = rowStride - pixelStride * width
+                val bitmap = Bitmap.createBitmap(
+                    width + rowPadding / pixelStride, height, Bitmap.Config.ARGB_8888
+                )
+                bitmap.copyPixelsFromBuffer(buffer)
+                bitmap.recycle()
+            } finally {
+                close()
+            }
+        }
     }
 
     private fun createNotificationChannel() {
