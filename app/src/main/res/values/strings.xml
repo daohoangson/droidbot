@@ -1,3 +1,5 @@
 <resources>
     <string name="app_name">Droid Take Over</string>
+    <string name="enter_api_key">Enter API Key</string>
+    <string name="save">Save</string>
 </resources>

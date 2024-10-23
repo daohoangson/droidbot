@@ -1,16 +1,17 @@
 package com.daohoangson.droidbot
 
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
+import androidx.compose.foundation.layout.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
 import com.daohoangson.droidbot.ui.theme.DroidTakeOverTheme
 
 class MainActivity : ComponentActivity() {
@@ -20,8 +21,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             DroidTakeOverTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    Greeting(
-                        name = "Android",
+                    ApiKeyInput(
                         modifier = Modifier.padding(innerPadding)
                     )
                 }
@@ -30,18 +30,27 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-@Composable
-fun Greeting(name: String, modifier: Modifier = Modifier) {
-    Text(
-        text = "Hello $name!",
-        modifier = modifier
-    )
-}
-
 @Preview(showBackground = true)
 @Composable
-fun GreetingPreview() {
-    DroidTakeOverTheme {
-        Greeting("Android")
+fun ApiKeyInput(modifier: Modifier = Modifier) {
+    var apiKey by remember { mutableStateOf("") }
+
+    Column(modifier = modifier) {
+        OutlinedTextField(
+            value = apiKey,
+            label = { Text(stringResource(R.string.enter_api_key)) },
+            modifier = Modifier.fillMaxWidth(),
+            onValueChange = { apiKey = it },
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Button(
+            onClick = {
+                Log.d("API KEY", apiKey)
+            }, modifier = Modifier.fillMaxWidth()
+        ) {
+            Text(stringResource(R.string.save))
+        }
     }
 }
