@@ -1,7 +1,6 @@
 package com.daohoangson.droidbot
 
 import android.os.Bundle
-import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -13,6 +12,7 @@ import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -22,6 +22,11 @@ import androidx.compose.ui.unit.dp
 import com.daohoangson.droidbot.ui.theme.DroidTakeOverTheme
 
 class MainActivity : ComponentActivity() {
+    companion object {
+        const val PREFS_NAME = "DroidBotPrefs"
+        const val KEY_API_KEY = "api_key"
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -29,7 +34,9 @@ class MainActivity : ComponentActivity() {
             DroidTakeOverTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
                     ApiKeyInput(
-                        modifier = Modifier.padding(innerPadding)
+                        modifier = Modifier
+                            .padding(innerPadding)
+                            .padding(16.dp)
                     )
                 }
             }
@@ -40,7 +47,13 @@ class MainActivity : ComponentActivity() {
 @Preview(showBackground = true)
 @Composable
 fun ApiKeyInput(modifier: Modifier = Modifier) {
-    var apiKey by remember { mutableStateOf("") }
+    val context = LocalContext.current
+    val prefs = remember {
+        context.getSharedPreferences(
+            MainActivity.PREFS_NAME, ComponentActivity.MODE_PRIVATE
+        )
+    }
+    var apiKey by remember { mutableStateOf(prefs.getString(MainActivity.KEY_API_KEY, "") ?: "") }
     var reveal by remember { mutableStateOf(false) }
 
     Column(modifier = modifier) {
@@ -67,7 +80,7 @@ fun ApiKeyInput(modifier: Modifier = Modifier) {
 
         Button(
             onClick = {
-                Log.d("API KEY", apiKey)
+                prefs.edit().putString(MainActivity.KEY_API_KEY, apiKey).apply()
             }, modifier = Modifier.fillMaxWidth()
         ) {
             Text(stringResource(R.string.save))
