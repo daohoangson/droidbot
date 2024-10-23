@@ -24,7 +24,8 @@ import com.daohoangson.droidbot.ui.theme.DroidTakeOverTheme
 class MainActivity : ComponentActivity() {
     companion object {
         const val PREFS_NAME = "DroidBotPrefs"
-        const val KEY_API_KEY = "api_key"
+        const val KEY_AWS_ACCESS_KEY_ID = "awsAccessKeyId"
+        const val KEY_AWS_SECRET_ACCESS_KEY = "awsSecretAccessKey"
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -33,7 +34,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             DroidTakeOverTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    ApiKeyInput(
+                    AwsCredentialsInput(
                         modifier = Modifier
                             .padding(innerPadding)
                             .padding(16.dp)
@@ -46,22 +47,53 @@ class MainActivity : ComponentActivity() {
 
 @Preview(showBackground = true)
 @Composable
-fun ApiKeyInput(modifier: Modifier = Modifier) {
+fun AwsCredentialsInput(modifier: Modifier = Modifier) {
     val context = LocalContext.current
     val prefs = remember {
         context.getSharedPreferences(
             MainActivity.PREFS_NAME, ComponentActivity.MODE_PRIVATE
         )
     }
-    var apiKey by remember { mutableStateOf(prefs.getString(MainActivity.KEY_API_KEY, "") ?: "") }
+    var awsAccessKeyId by remember {
+        mutableStateOf(
+            prefs.getString(
+                MainActivity.KEY_AWS_ACCESS_KEY_ID, ""
+            ) ?: ""
+        )
+    }
+    var awsSecretAccessKey by remember {
+        mutableStateOf(
+            prefs.getString(
+                MainActivity.KEY_AWS_SECRET_ACCESS_KEY, ""
+            ) ?: ""
+        )
+    }
+    var hasChanges by remember { mutableStateOf(false) }
     var reveal by remember { mutableStateOf(false) }
 
     Column(modifier = modifier) {
         OutlinedTextField(
-            value = apiKey,
-            label = { Text(stringResource(R.string.enter_api_key)) },
+            value = awsAccessKeyId,
+            label = { Text(stringResource(R.string.enter_aws_access_key_id)) },
+            maxLines = 1,
             modifier = Modifier.fillMaxWidth(),
-            onValueChange = { apiKey = it },
+            onValueChange = {
+                awsAccessKeyId = it
+                hasChanges = true
+            },
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        OutlinedTextField(
+            value = awsSecretAccessKey,
+            label = { Text(stringResource(R.string.enter_aws_secret_access_key)) },
+            maxLines = 1,
+            modifier = Modifier.fillMaxWidth(),
+            onValueChange = {
+                awsSecretAccessKey = it
+                hasChanges = true
+            },
             keyboardOptions = KeyboardOptions(
                 keyboardType = KeyboardType.Password
             ),
@@ -69,7 +101,8 @@ fun ApiKeyInput(modifier: Modifier = Modifier) {
                 IconButton(onClick = { reveal = !reveal }) {
                     Icon(
                         imageVector = if (reveal) Icons.Outlined.Lock else Icons.Filled.Lock,
-                        contentDescription = if (reveal) "Hide password" else "Show password"
+                        contentDescription = if (reveal) stringResource(R.string.enter_aws_secret_access_key_hide)
+                        else stringResource(R.string.enter_aws_secret_access_key_reveal)
                     )
                 }
             },
@@ -79,9 +112,15 @@ fun ApiKeyInput(modifier: Modifier = Modifier) {
         Spacer(modifier = Modifier.height(16.dp))
 
         Button(
+            enabled = hasChanges,
             onClick = {
-                prefs.edit().putString(MainActivity.KEY_API_KEY, apiKey).apply()
-            }, modifier = Modifier.fillMaxWidth()
+                prefs.edit()
+                    .putString(MainActivity.KEY_AWS_ACCESS_KEY_ID, awsAccessKeyId)
+                    .putString(MainActivity.KEY_AWS_SECRET_ACCESS_KEY, awsSecretAccessKey)
+                    .apply()
+                hasChanges = false
+            },
+            modifier = Modifier.fillMaxWidth()
         ) {
             Text(stringResource(R.string.save))
         }

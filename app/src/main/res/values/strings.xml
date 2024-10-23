@@ -1,5 +1,8 @@
 <resources>
     <string name="app_name">Droid Take Over</string>
-    <string name="enter_api_key">Enter API Key</string>
+    <string name="enter_aws_access_key_id">Enter AWS access key ID</string>
+    <string name="enter_aws_secret_access_key">Enter AWS secret access key</string>
+    <string name="enter_aws_secret_access_key_hide">Hide</string>
+    <string name="enter_aws_secret_access_key_reveal">Reveal</string>
     <string name="save">Save</string>
 </resources>
