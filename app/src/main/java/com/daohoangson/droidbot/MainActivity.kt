@@ -1,9 +1,12 @@
 package com.daohoangson.droidbot
 
+import android.media.projection.MediaProjectionManager
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -28,17 +31,36 @@ class MainActivity : ComponentActivity() {
         const val KEY_AWS_SECRET_ACCESS_KEY = "awsSecretAccessKey"
     }
 
+    private val takeOverLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        Log.d("takeOverLauncher: result -> ", result.toString())
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
             DroidTakeOverTheme {
                 Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    AwsCredentialsInput(
+                    Column(
                         modifier = Modifier
                             .padding(innerPadding)
                             .padding(16.dp)
-                    )
+                    ) {
+                        AwsCredentialsInput()
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        Button(
+                            onClick = {
+                                val mpm = getSystemService(MediaProjectionManager::class.java)
+                                takeOverLauncher.launch(mpm.createScreenCaptureIntent())
+                            }, modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(stringResource(R.string.take_over))
+                        }
+                    }
                 }
             }
         }

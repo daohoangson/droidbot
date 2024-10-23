@@ -5,4 +5,5 @@
     <string name="enter_aws_secret_access_key_hide">Hide</string>
     <string name="enter_aws_secret_access_key_reveal">Reveal</string>
     <string name="save">Save</string>
+    <string name="take_over">Take over</string>
 </resources>
