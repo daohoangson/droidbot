@@ -17,6 +17,7 @@ import android.os.Handler
 import android.os.IBinder
 import android.os.Looper
 import androidx.core.app.NotificationCompat
+import kotlin.math.roundToInt
 
 class TakeOverService : Service() {
     private object Notification {
@@ -133,11 +134,31 @@ class TakeOverService : Service() {
                     width + rowPadding / pixelStride, height, Bitmap.Config.ARGB_8888
                 )
                 bitmap.copyPixelsFromBuffer(buffer)
+
+                val resized = resizeBitmapIfNeeded(bitmap)
+                if (resized != bitmap) resized.recycle()
+
                 bitmap.recycle()
             } finally {
                 close()
             }
         }
+    }
+
+    private fun resizeBitmapIfNeeded(bitmap: Bitmap): Bitmap {
+        val preferredWidth = 1280
+        val preferredHeight = 800
+        val ratio = bitmap.width / bitmap.height.toFloat()
+
+        var resizedWidth = preferredWidth
+        var resizedHeight = preferredHeight
+        if (ratio > preferredWidth / preferredHeight) {
+            resizedHeight = (preferredWidth / ratio).roundToInt()
+        } else {
+            resizedWidth = (preferredHeight * ratio).roundToInt()
+        }
+
+        return Bitmap.createScaledBitmap(bitmap, resizedWidth, resizedHeight, true)
     }
 
     private fun createNotificationChannel() {
