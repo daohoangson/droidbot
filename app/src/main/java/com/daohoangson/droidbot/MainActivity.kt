@@ -21,6 +21,7 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.daohoangson.droidbot.ui.theme.DroidTakeOverTheme
+import java.util.Date
 
 class MainActivity : ComponentActivity() {
     companion object {
@@ -55,6 +56,12 @@ class MainActivity : ComponentActivity() {
 
                         Spacer(modifier = Modifier.height(16.dp))
 
+                        Button(
+                            onClick = { DroidBotLiveData.screenshots.value = Date() },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("Screenshot")
+                        }
                         Button(
                             onClick = { DroidBotLiveData.taps.value = Pair(540f, 198f) },
                             modifier = Modifier.fillMaxWidth()
