@@ -68,6 +68,17 @@ class MainActivity : ComponentActivity() {
                         ) {
                             Text(stringResource(R.string.take_over))
                         }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        Button(
+                            onClick = {
+                                startActivity(Intent(android.provider.Settings.ACTION_ACCESSIBILITY_SETTINGS))
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(stringResource(R.string.accessibility_open_settings))
+                        }
                     }
                 }
             }
