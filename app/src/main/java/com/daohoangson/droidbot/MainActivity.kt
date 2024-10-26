@@ -1,6 +1,7 @@
 package com.daohoangson.droidbot
 
 import android.content.Intent
+import android.graphics.Point
 import android.media.projection.MediaProjectionManager
 import android.os.Bundle
 import android.util.Log
@@ -78,6 +79,21 @@ class MainActivity : ComponentActivity() {
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Text(stringResource(R.string.accessibility_open_settings))
+                        }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        Button(
+                            onClick = { DroidBotLiveData.taps.value = Pair(540f, 198f) },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(stringResource(R.string.enter_aws_access_key_id))
+                        }
+                        Button(
+                            onClick = { DroidBotLiveData.taps.value = Pair(540f, 418f) },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(stringResource(R.string.enter_aws_secret_access_key))
                         }
                     }
                 }
