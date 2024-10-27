@@ -20,7 +20,10 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.asFlow
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.lifecycleScope
+import com.daohoangson.droidbot.bedrock.Client
 import com.daohoangson.droidbot.ui.theme.DroidTakeOverTheme
+import kotlinx.coroutines.async
 
 class MainActivity : ComponentActivity() {
     private val prefs: SharedPreferencesLiveData by lazy { SharedPreferencesLiveData(this) }
@@ -69,6 +72,23 @@ class MainActivity : ComponentActivity() {
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Text(stringResource(R.string.enter_aws_secret_access_key))
+                        }
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        Button(
+                            onClick = {
+                                lifecycleScope.async {
+                                    val bedrock = Client(
+                                        accessKeyId = prefs.value?.awsAccessKeyId ?: "",
+                                        secretAccessKey = prefs.value?.awsSecretAccessKey ?: ""
+                                    )
+                                    bedrock.invokeModelWithResponseStream()
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("Bedrock")
                         }
                     }
                 }
