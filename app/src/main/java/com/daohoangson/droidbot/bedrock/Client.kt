@@ -6,6 +6,10 @@ import aws.sdk.kotlin.services.bedrockruntime.BedrockRuntimeClient
 import aws.sdk.kotlin.services.bedrockruntime.model.InvokeModelWithResponseStreamRequest
 import aws.smithy.kotlin.runtime.auth.awscredentials.Credentials
 import aws.smithy.kotlin.runtime.auth.awscredentials.Credentials.Companion.invoke
+import com.xemantic.anthropic.message.Message
+import kotlinx.serialization.InternalSerializationApi
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 
 class Client(val accessKeyId: String, val secretAccessKey: String) {
     private val awsClient: BedrockRuntimeClient by lazy {
@@ -19,26 +23,14 @@ class Client(val accessKeyId: String, val secretAccessKey: String) {
         }
     }
 
+    @OptIn(InternalSerializationApi::class)
     suspend fun invokeModelWithResponseStream() {
+        val message = Message { +"What is the answer to life, the universe, and everything?" }
+        val requestBody = InvokeModelRequestBody(messages = listOf(message))
+        val encodedBody = Json.encodeToString(requestBody)
         val request = InvokeModelWithResponseStreamRequest.invoke {
             modelId = "anthropic.claude-3-5-sonnet-20241022-v2:0"
-            body = """{
-    "anthropic_version": "bedrock-2023-05-31", 
-    "anthropic_beta": ["computer-use-2024-10-22"],
-    "max_tokens": 8192,
-    "messages": [
-        {
-            "role": "user",
-            "content": [
-                {
-                    "type": "text",
-                    "text": "What is the answer to life, the universe, and everything?"
-                }
-            ]
-        }
-    ]
-}""".toByteArray()
-
+            body = encodedBody.toByteArray()
         }
 
         awsClient.invokeModelWithResponseStream(request) {
