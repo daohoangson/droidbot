@@ -84,8 +84,11 @@ class MainActivity : ComponentActivity() {
                                         accessKeyId = prefs.value?.awsAccessKeyId ?: "",
                                         secretAccessKey = prefs.value?.awsSecretAccessKey ?: ""
                                     )
-                                    bedrock.invokeModel().collect {
-                                        Log.d("Bedrock", "event: $it")
+                                    bedrock.invokeModel(
+                                        displayHeightPx = 800,
+                                        displayWidthPx = 1024,
+                                    ).collect { event ->
+                                        Log.d("MainActivity", "event: $event")
                                     }
                                 }
                             },
