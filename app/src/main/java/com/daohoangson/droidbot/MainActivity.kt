@@ -21,7 +21,6 @@ import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.daohoangson.droidbot.ui.theme.DroidTakeOverTheme
-import java.util.Date
 
 class MainActivity : ComponentActivity() {
     companion object {
@@ -29,6 +28,8 @@ class MainActivity : ComponentActivity() {
         const val KEY_AWS_ACCESS_KEY_ID = "awsAccessKeyId"
         const val KEY_AWS_SECRET_ACCESS_KEY = "awsSecretAccessKey"
     }
+
+    private val vm = DroidBotViewModel
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -57,19 +58,19 @@ class MainActivity : ComponentActivity() {
                         Spacer(modifier = Modifier.height(16.dp))
 
                         Button(
-                            onClick = { DroidBotLiveData.screenshots.value = Date() },
+                            onClick = { vm.takeScreenshot() },
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Text("Screenshot")
                         }
                         Button(
-                            onClick = { DroidBotLiveData.taps.value = Pair(540f, 198f) },
+                            onClick = { vm.dispatchTap(540f, 198f) },
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Text(stringResource(R.string.enter_aws_access_key_id))
                         }
                         Button(
-                            onClick = { DroidBotLiveData.taps.value = Pair(540f, 418f) },
+                            onClick = { vm.dispatchTap(540f, 418f) },
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Text(stringResource(R.string.enter_aws_secret_access_key))

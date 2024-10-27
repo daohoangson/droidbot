@@ -19,6 +19,8 @@ class DroidBotAccessibilityService : AccessibilityService() {
         private val TAP_TIMEOUT = ViewConfiguration.getTapTimeout().toLong()
     }
 
+    private val vm = DroidBotViewModel
+
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
         if (event?.eventType == AccessibilityEvent.TYPE_VIEW_FOCUSED) {
             findFocus(AccessibilityNodeInfo.FOCUS_INPUT)?.also { maybeFocusedNode ->
@@ -41,11 +43,11 @@ class DroidBotAccessibilityService : AccessibilityService() {
         performGlobalAction(GLOBAL_ACTION_BACK)
         performGlobalAction(GLOBAL_ACTION_BACK)
 
-        DroidBotLiveData.screenshots.observeForever {
+        vm.screenshots.observeForever {
             takeScreenshotAndResize()
         }
 
-        DroidBotLiveData.taps.observeForever { pair ->
+        vm.taps.observeForever { pair ->
             dispatchTap(pair.first, pair.second)
         }
     }
@@ -65,7 +67,7 @@ class DroidBotAccessibilityService : AccessibilityService() {
         )?.also { uri ->
             contentResolver.openOutputStream(uri)?.use { stream ->
                 bitmap.compress(Bitmap.CompressFormat.JPEG, 80, stream)
-            };
+            }
         }
     }
 
