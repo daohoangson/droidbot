@@ -2,6 +2,7 @@ package com.daohoangson.droidbot
 
 import android.content.Intent
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -83,7 +84,9 @@ class MainActivity : ComponentActivity() {
                                         accessKeyId = prefs.value?.awsAccessKeyId ?: "",
                                         secretAccessKey = prefs.value?.awsSecretAccessKey ?: ""
                                     )
-                                    bedrock.invokeModelWithResponseStream()
+                                    bedrock.invokeModel().collect {
+                                        Log.d("Bedrock", "event: $it")
+                                    }
                                 }
                             },
                             modifier = Modifier.fillMaxWidth()
