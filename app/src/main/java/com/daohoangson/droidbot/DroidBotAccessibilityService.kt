@@ -1,6 +1,5 @@
 package com.daohoangson.droidbot
 
-import android.accessibilityservice.AccessibilityService
 import android.accessibilityservice.GestureDescription
 import android.content.ContentValues
 import android.graphics.Bitmap
@@ -15,17 +14,17 @@ import android.view.ViewConfiguration
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
 import androidx.lifecycle.asFlow
+import androidx.lifecycle.lifecycleScope
+import com.daohoangson.droidbot.android.AccessibilityLifecycleService
 import com.daohoangson.droidbot.bedrock.Client
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Deferred
-import kotlinx.coroutines.DelicateCoroutinesApi
-import kotlinx.coroutines.GlobalScope
 import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlin.math.roundToInt
 
-class DroidBotAccessibilityService : AccessibilityService() {
+class DroidBotAccessibilityService : AccessibilityLifecycleService() {
     companion object {
         private val TAP_TIMEOUT = ViewConfiguration.getTapTimeout().toLong()
     }
@@ -99,9 +98,8 @@ class DroidBotAccessibilityService : AccessibilityService() {
         return Bitmap.createScaledBitmap(bitmap, resizedWidth, resizedHeight, true)
     }
 
-    @OptIn(DelicateCoroutinesApi::class)
     private fun computerUse() {
-        GlobalScope.async {
+        lifecycleScope.async {
             performGlobalAction(GLOBAL_ACTION_BACK)
             delay(100)
             performGlobalAction(GLOBAL_ACTION_BACK)
