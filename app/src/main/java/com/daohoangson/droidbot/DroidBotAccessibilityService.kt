@@ -5,13 +5,24 @@ import android.accessibilityservice.GestureDescription
 import android.content.ContentValues
 import android.graphics.Bitmap
 import android.graphics.Path
+import android.net.Uri
 import android.os.Environment
 import android.provider.MediaStore
 import android.util.Log
+import android.util.Size
 import android.view.Display
 import android.view.ViewConfiguration
 import android.view.accessibility.AccessibilityEvent
 import android.view.accessibility.AccessibilityNodeInfo
+import androidx.lifecycle.asFlow
+import com.daohoangson.droidbot.bedrock.Client
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.Deferred
+import kotlinx.coroutines.DelicateCoroutinesApi
+import kotlinx.coroutines.GlobalScope
+import kotlinx.coroutines.async
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 import kotlin.math.roundToInt
 
 class DroidBotAccessibilityService : AccessibilityService() {
@@ -19,6 +30,7 @@ class DroidBotAccessibilityService : AccessibilityService() {
         private val TAP_TIMEOUT = ViewConfiguration.getTapTimeout().toLong()
     }
 
+    private val prefs: SharedPreferencesLiveData by lazy { SharedPreferencesLiveData(this) }
     private val vm = DroidBotViewModel
 
     override fun onAccessibilityEvent(event: AccessibilityEvent?) {
@@ -40,8 +52,7 @@ class DroidBotAccessibilityService : AccessibilityService() {
         super.onServiceConnected()
 
         // demo
-        performGlobalAction(GLOBAL_ACTION_BACK)
-        performGlobalAction(GLOBAL_ACTION_BACK)
+        computerUse()
 
         vm.screenshots.observeForever {
             takeScreenshotAndResize()
@@ -52,7 +63,7 @@ class DroidBotAccessibilityService : AccessibilityService() {
         }
     }
 
-    private fun bitmapCompress(bitmap: Bitmap) {
+    private fun bitmapCompress(bitmap: Bitmap): Uri? {
         val contentValues = ContentValues().apply {
             put(MediaStore.MediaColumns.DISPLAY_NAME, "screenshot.jpg")
             put(MediaStore.MediaColumns.MIME_TYPE, "image/jpeg")
@@ -61,7 +72,8 @@ class DroidBotAccessibilityService : AccessibilityService() {
                 Environment.DIRECTORY_PICTURES
             )
         }
-        contentResolver.insert(
+
+        return contentResolver.insert(
             MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
             contentValues
         )?.also { uri ->
@@ -85,6 +97,36 @@ class DroidBotAccessibilityService : AccessibilityService() {
         }
 
         return Bitmap.createScaledBitmap(bitmap, resizedWidth, resizedHeight, true)
+    }
+
+    @OptIn(DelicateCoroutinesApi::class)
+    private fun computerUse() {
+        GlobalScope.async {
+            performGlobalAction(GLOBAL_ACTION_BACK)
+            delay(100)
+            performGlobalAction(GLOBAL_ACTION_BACK)
+            delay(100)
+
+            val prefValues = prefs.asFlow().first()
+            val bedrock = Client(
+                accessKeyId = prefValues.awsAccessKeyId ?: "",
+                secretAccessKey = prefValues.awsSecretAccessKey ?: ""
+            )
+
+            val screenshot = takeScreenshotAndResize()
+            val pair = screenshot.await()
+            val size = pair!!.second
+            try {
+                bedrock.invokeComputerUse(
+                    displayHeightPx = size.height,
+                    displayWidthPx = size.width,
+                ).collect { computerUseEvent ->
+                    Log.d("DroidBot", "computerUseEvent: $computerUseEvent")
+                }
+            } catch (e: Exception) {
+                Log.e("DroidBot", "invokeComputerUse", e)
+            }
+        }
     }
 
     private fun dispatchTap(x: Float, y: Float): Boolean {
@@ -111,33 +153,45 @@ class DroidBotAccessibilityService : AccessibilityService() {
     }
 
 
-    private fun takeScreenshotAndResize() {
-        takeScreenshot(
-            Display.DEFAULT_DISPLAY,
-            mainExecutor,
-            object : TakeScreenshotCallback {
-                override fun onSuccess(screenshot: ScreenshotResult) {
-                    screenshot.hardwareBuffer.use { buffer ->
-                        Bitmap.wrapHardwareBuffer(buffer, screenshot.colorSpace)
-                            ?.also { bitmap ->
-                                try {
-                                    val resizedBitmap = bitmapResizeIfNeeded(bitmap)
-                                    try {
-                                        bitmapCompress(resizedBitmap)
-                                    } finally {
-                                        if (resizedBitmap != bitmap) resizedBitmap.recycle()
-                                    }
-                                } finally {
-                                    bitmap.recycle()
-                                }
+    private fun takeScreenshotAndResize(): Deferred<Pair<Uri, Size>?> {
+        val deferred = CompletableDeferred<Pair<Uri, Size>?>()
+
+        takeScreenshot(Display.DEFAULT_DISPLAY, mainExecutor, object : TakeScreenshotCallback {
+            override fun onSuccess(screenshot: ScreenshotResult) {
+                screenshot.hardwareBuffer.use { buffer ->
+                    val bitmap = Bitmap.wrapHardwareBuffer(buffer, screenshot.colorSpace) ?: run {
+                        deferred.completeExceptionally(IllegalStateException("Could not wrap hardware buffer"))
+                        return
+                    }
+
+                    try {
+                        val resizedBitmap = bitmapResizeIfNeeded(bitmap)
+                        try {
+                            val uri = bitmapCompress(resizedBitmap) ?: run {
+                                deferred.completeExceptionally(IllegalStateException("Could not compress bitmap"))
+                                return
                             }
+                            deferred.complete(
+                                Pair(
+                                    uri, Size(resizedBitmap.width, resizedBitmap.height)
+                                )
+                            )
+                        } catch (e: Exception) {
+                            deferred.completeExceptionally(e)
+                            if (resizedBitmap != bitmap) resizedBitmap.recycle()
+                        }
+                    } catch (e: Exception) {
+                        deferred.completeExceptionally(e)
+                        bitmap.recycle()
                     }
                 }
-
-                override fun onFailure(errorCode: Int) {
-                    // TODO
-                }
             }
-        )
+
+            override fun onFailure(errorCode: Int) {
+                // TODO
+            }
+        })
+
+        return deferred
     }
 }

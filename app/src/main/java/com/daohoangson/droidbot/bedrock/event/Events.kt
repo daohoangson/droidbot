@@ -1,3 +1,5 @@
+@file:OptIn(ExperimentalSerializationApi::class)
+
 package com.daohoangson.droidbot.bedrock.event
 
 import com.daohoangson.droidbot.bedrock.MessageResponse
@@ -5,6 +7,7 @@ import com.daohoangson.droidbot.bedrock.message.StopReason
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.Transient
 import kotlinx.serialization.json.JsonClassDiscriminator
 import kotlinx.serialization.json.JsonObject
 
@@ -12,7 +15,6 @@ import kotlinx.serialization.json.JsonObject
 
 @Serializable
 @JsonClassDiscriminator("type")
-@OptIn(ExperimentalSerializationApi::class)
 sealed class Event
 
 @Serializable
@@ -73,23 +75,25 @@ data class ContentBlockStopEvent(
 
 @Serializable
 @JsonClassDiscriminator("type")
-@OptIn(ExperimentalSerializationApi::class)
 sealed class ContentBlock {
 
     @Serializable
     @SerialName("text")
-    class Text(
+    data class Text(
         val text: String
     ) : ContentBlock()
 
     @Serializable
     @SerialName("tool_use")
-    class ToolUse(
+    data class ToolUse(
         val id: String,
         val input: JsonObject,
-        val name: String
+        val name: String,
+
+        @Transient
+        val inputJson: String = "",
     ) : ContentBlock()
-    // TODO missing tool_use
+
 }
 
 @Serializable
@@ -107,7 +111,6 @@ data class ContentBlockDeltaEvent(
 
 @Serializable
 @JsonClassDiscriminator("type")
-@OptIn(ExperimentalSerializationApi::class)
 sealed class Delta {
 
     @Serializable

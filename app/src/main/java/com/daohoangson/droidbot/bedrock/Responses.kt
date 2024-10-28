@@ -1,3 +1,5 @@
+@file:OptIn(ExperimentalSerializationApi::class)
+
 package com.daohoangson.droidbot.bedrock
 
 import com.daohoangson.droidbot.bedrock.event.Usage
@@ -14,7 +16,6 @@ import kotlinx.serialization.json.JsonClassDiscriminator
 
 @Serializable
 @JsonClassDiscriminator("type")
-@OptIn(ExperimentalSerializationApi::class)
 sealed class Response(
     val type: String
 )

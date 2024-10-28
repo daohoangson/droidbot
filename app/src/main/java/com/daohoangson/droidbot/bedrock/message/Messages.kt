@@ -1,3 +1,5 @@
+@file:OptIn(ExperimentalSerializationApi::class)
+
 package com.daohoangson.droidbot.bedrock.message
 
 import kotlinx.serialization.*
@@ -47,9 +49,7 @@ data class Message(
 
 @Serializable
 @JsonClassDiscriminator("name")
-@OptIn(ExperimentalSerializationApi::class)
-sealed class Tool(
-)
+sealed class Tool()
 
 @Serializable
 @SerialName("computer")
@@ -68,9 +68,7 @@ data class ComputerTool(
 
 @Serializable
 @JsonClassDiscriminator("type")
-@OptIn(ExperimentalSerializationApi::class)
-sealed class Content {
-}
+sealed class Content
 
 @Serializable
 @SerialName("text")
@@ -155,7 +153,6 @@ data class CacheControl(
 
 @Serializable
 @JsonClassDiscriminator("type")
-@OptIn(ExperimentalSerializationApi::class)
 sealed class ToolChoice(
     @SerialName("disable_parallel_tool_use")
     val disableParallelToolUse: Boolean = false

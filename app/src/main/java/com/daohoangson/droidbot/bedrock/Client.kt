@@ -6,7 +6,15 @@ import aws.sdk.kotlin.services.bedrockruntime.BedrockRuntimeClient
 import aws.sdk.kotlin.services.bedrockruntime.model.InvokeModelWithResponseStreamRequest
 import aws.smithy.kotlin.runtime.auth.awscredentials.Credentials
 import aws.smithy.kotlin.runtime.auth.awscredentials.Credentials.Companion.invoke
+import com.daohoangson.droidbot.bedrock.computer.ComputerUseEvent
+import com.daohoangson.droidbot.bedrock.computer.ComputerUseInput
+import com.daohoangson.droidbot.bedrock.event.ContentBlock
+import com.daohoangson.droidbot.bedrock.event.ContentBlockDeltaEvent
+import com.daohoangson.droidbot.bedrock.event.ContentBlockStartEvent
+import com.daohoangson.droidbot.bedrock.event.ContentBlockStopEvent
+import com.daohoangson.droidbot.bedrock.event.Delta
 import com.daohoangson.droidbot.bedrock.event.Event
+import com.daohoangson.droidbot.bedrock.event.MessageStartEvent
 import com.daohoangson.droidbot.bedrock.message.ComputerTool
 import com.daohoangson.droidbot.bedrock.message.Message
 import com.daohoangson.droidbot.bedrock.message.MessageRequest
@@ -33,23 +41,9 @@ class Client(val accessKeyId: String, val secretAccessKey: String) {
         encodeDefaults = true
     }
 
-    fun invokeModel(
-        displayHeightPx: Int,
-        displayWidthPx: Int
-    ): Flow<Event> = channelFlow {
-        val message = Message(
-            role = Role.USER,
-            content = listOf(Text("Search for near by pizza place and tell me the top 3 with best reviews."))
-        )
-        val computerTool = ComputerTool(
-            displayHeightPx = displayHeightPx,
-            displayWidthPx = displayWidthPx,
-        )
-        val requestBody = MessageRequest(
-            messages = listOf(message),
-            tools = listOf(computerTool),
-        )
+    fun invokeModel(requestBody: MessageRequest): Flow<Event> = channelFlow {
         val encodedBody = json.encodeToString(requestBody)
+        Log.v("invokeModel", "request: $encodedBody")
         val request = InvokeModelWithResponseStreamRequest.invoke {
             modelId = "anthropic.claude-3-5-sonnet-20241022-v2:0"
             body = encodedBody.toByteArray()
@@ -63,9 +57,123 @@ class Client(val accessKeyId: String, val secretAccessKey: String) {
                         try {
                             send(json.decodeFromString(eventSerializer, str))
                         } catch (e: Exception) {
-                            Log.e("Bedrock", "chunk: $str", e)
+                            Log.e("invokeModel", "chunk: $str", e)
                         }
                     }
+                }
+            }
+        }
+    }
+
+    fun invokeComputerUse(
+        displayHeightPx: Int,
+        displayWidthPx: Int,
+    ): Flow<ComputerUseEvent> = channelFlow {
+        val computerTool = ComputerTool(
+            displayHeightPx = displayHeightPx,
+            displayWidthPx = displayWidthPx,
+        )
+        val requestBody = MessageRequest(
+            messages = listOf(
+                Message(
+                    role = Role.USER,
+                    content = listOf(Text("Search for near by pizza place and tell me the top 3 with best reviews."))
+                )
+            ),
+            tools = listOf(computerTool),
+        )
+
+        var contentBlock: ContentBlock? = null
+        var index = -1
+        var message: MessageResponse? = null
+        val computerUseInputSerializer = ComputerUseInput.serializer()
+        invokeModel(requestBody = requestBody).collect { event ->
+            when (event) {
+                is MessageStartEvent -> {
+                    message = event.message
+                }
+
+                is ContentBlockStartEvent -> {
+                    contentBlock = event.contentBlock
+                    index = event.index
+                }
+
+                is ContentBlockDeltaEvent -> {
+                    if (event.index != index) {
+                        throw IllegalStateException("Unexpected $event: index=$index")
+                    }
+
+                    event.delta.let { delta ->
+                        when (delta) {
+                            is Delta.TextDelta -> {
+                                val existing = contentBlock
+                                if (existing is ContentBlock.Text) {
+                                    contentBlock = existing.copy(text = existing.text + delta.text)
+                                    Log.d("invokeComputerUse", "delta.text: ${delta.text}")
+                                } else {
+                                    throw IllegalStateException("Unexpected $event: existing=$existing")
+                                }
+                            }
+
+                            is Delta.InputJsonDelta -> {
+                                val existing = contentBlock
+                                if (existing is ContentBlock.ToolUse) {
+                                    contentBlock =
+                                        existing.copy(inputJson = existing.inputJson + delta.partialJson)
+                                } else {
+                                    throw IllegalStateException("Unexpected $event: existing=$existing")
+                                }
+                            }
+                        }
+                    }
+                }
+
+                is ContentBlockStopEvent -> {
+                    val existing = contentBlock
+                    val parent = message
+                    if (event.index != index || existing == null || parent == null) {
+                        throw IllegalStateException("Unexpected $event: index=$index existing=$existing parent=$parent")
+                    }
+
+                    when (existing) {
+                        is ContentBlock.Text -> {
+                            send(ComputerUseEvent.Text(message = parent, text = existing.text))
+                        }
+
+                        is ContentBlock.ToolUse -> {
+                            when (existing.name) {
+                                "computer" -> {
+                                    try {
+                                        val input = json.decodeFromString(
+                                            computerUseInputSerializer, existing.inputJson
+                                        )
+                                        send(
+                                            ComputerUseEvent.ComputerUse(
+                                                id = existing.id,
+                                                input = input,
+                                                message = parent,
+                                                name = existing.name,
+                                            )
+                                        )
+                                    } catch (e: Exception) {
+                                        Log.e(
+                                            "invokeComputerUse",
+                                            "input json: ${existing.inputJson}",
+                                            e
+                                        )
+                                    }
+                                }
+
+                                else -> {
+                                    throw IllegalStateException("Unexpected tool: $existing")
+                                }
+                            }
+                        }
+                    }
+                }
+
+                else -> {
+                    Log.v("invokeComputerUse", "event: $event")
                 }
             }
         }
