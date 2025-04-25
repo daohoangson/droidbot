@@ -15,6 +15,7 @@ import com.daohoangson.droidbot.bedrock.event.ContentBlockStopEvent
 import com.daohoangson.droidbot.bedrock.event.Delta
 import com.daohoangson.droidbot.bedrock.event.Event
 import com.daohoangson.droidbot.bedrock.event.MessageStartEvent
+import com.daohoangson.droidbot.bedrock.event.MessageStopEvent
 import com.daohoangson.droidbot.bedrock.message.ComputerTool
 import com.daohoangson.droidbot.bedrock.message.Message
 import com.daohoangson.droidbot.bedrock.message.MessageRequest
@@ -68,29 +69,28 @@ class Client(val accessKeyId: String, val secretAccessKey: String) {
     fun invokeComputerUse(
         displayHeightPx: Int,
         displayWidthPx: Int,
+        messages: List<Message>,
     ): Flow<ComputerUseEvent> = channelFlow {
         val computerTool = ComputerTool(
             displayHeightPx = displayHeightPx,
             displayWidthPx = displayWidthPx,
         )
         val requestBody = MessageRequest(
-            messages = listOf(
-                Message(
-                    role = Role.USER,
-                    content = listOf(Text("Search for near by pizza place and tell me the top 3 with best reviews."))
-                )
-            ),
+            messages = messages,
             tools = listOf(computerTool),
         )
 
         var contentBlock: ContentBlock? = null
         var index = -1
-        var message: MessageResponse? = null
+        var message: Message? = null
         val computerUseInputSerializer = ComputerUseInput.serializer()
         invokeModel(requestBody = requestBody).collect { event ->
             when (event) {
                 is MessageStartEvent -> {
-                    message = event.message
+                    message = Message(
+                        role = event.message.role,
+                        content = event.message.content
+                    )
                 }
 
                 is ContentBlockStartEvent -> {
@@ -130,14 +130,13 @@ class Client(val accessKeyId: String, val secretAccessKey: String) {
 
                 is ContentBlockStopEvent -> {
                     val existing = contentBlock
-                    val parent = message
-                    if (event.index != index || existing == null || parent == null) {
-                        throw IllegalStateException("Unexpected $event: index=$index existing=$existing parent=$parent")
+                    if (event.index != index || existing == null) {
+                        throw IllegalStateException("Unexpected $event: index=$index existing=$existing")
                     }
 
                     when (existing) {
                         is ContentBlock.Text -> {
-                            send(ComputerUseEvent.Text(message = parent, text = existing.text))
+                            send(ComputerUseEvent.Text(text = existing.text))
                         }
 
                         is ContentBlock.ToolUse -> {
@@ -151,7 +150,6 @@ class Client(val accessKeyId: String, val secretAccessKey: String) {
                                             ComputerUseEvent.ComputerUse(
                                                 id = existing.id,
                                                 input = input,
-                                                message = parent,
                                                 name = existing.name,
                                             )
                                         )
@@ -170,6 +168,14 @@ class Client(val accessKeyId: String, val secretAccessKey: String) {
                             }
                         }
                     }
+                }
+
+                is MessageStopEvent -> {
+                    val existing = message
+                    if (existing == null) {
+                        throw IllegalStateException("Unexpected $event: existing=null")
+                    }
+                    send(ComputerUseEvent.MessageStopEvent(message = existing))
                 }
 
                 else -> {

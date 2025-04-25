@@ -2,25 +2,26 @@
 
 package com.daohoangson.droidbot.bedrock.computer
 
-import com.daohoangson.droidbot.bedrock.MessageResponse
+import com.daohoangson.droidbot.bedrock.message.Message
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonClassDiscriminator
 
-sealed class ComputerUseEvent(
-    open val message: MessageResponse,
-) {
+sealed class ComputerUseEvent() {
     data class Text(
-        override val message: MessageResponse, val text: String
-    ) : ComputerUseEvent(message = message)
+        val text: String
+    ) : ComputerUseEvent()
 
     data class ComputerUse(
         val id: String,
         val input: ComputerUseInput,
-        override val message: MessageResponse,
         val name: String,
-    ) : ComputerUseEvent(message = message)
+    ) : ComputerUseEvent()
+
+    data class MessageStopEvent(
+        val message: Message
+    ) : ComputerUseEvent()
 }
 
 
